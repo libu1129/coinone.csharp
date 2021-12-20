@@ -1,38 +1,34 @@
 ﻿using Newtonsoft.Json;
-using OdinSdk.BaseLib.Configuration;
+
 using RestSharp;
+
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace XCT.BaseLib.API.CoinOne
-{
+namespace XCT.BaseLib.API.CoinOne {
     /// <summary>
     /// 
     /// </summary>
-    public class CoinOneClient : XApiClient
-    {
+    public class CoinOneClient : XApiClient {
         private const string __api_url = "https://api.coinone.co.kr";
         /// <summary>
         /// 
         /// </summary>
         public CoinOneClient()
-            : base(__api_url, "", "")
-        {
+            : base(__api_url, "", "") {
         }
 
         /// <summary>
         /// 
         /// </summary>
         public CoinOneClient(string connect_key, string secret_key)
-            : base(__api_url, connect_key, secret_key)
-        {
+            : base(__api_url, connect_key, secret_key) {
         }
 
-        private string BytesToHex(byte[] bytes)
-        {
+        private string BytesToHex(byte[] bytes) {
             var _hex = new StringBuilder(bytes.Length * 2);
             foreach (byte b in bytes)
                 _hex.AppendFormat("{0:x2}", b);
@@ -40,13 +36,11 @@ namespace XCT.BaseLib.API.CoinOne
             return _hex.ToString();
         }
 
-        private Dictionary<string, object> GetHttpHeaders(string endpoint, string payload, string access_token, string secret_key)
-        {
+        private Dictionary<string, object> GetHttpHeaders(string endpoint, string payload, string access_token, string secret_key) {
             var _signature = "";
 
             var _secretKey = Encoding.UTF8.GetBytes(secret_key.ToUpper());
-            using (var _hmac = new HMACSHA512(_secretKey))
-            {
+            using (var _hmac = new HMACSHA512(_secretKey)) {
                 _hmac.Initialize();
 
                 var _bytes = Encoding.UTF8.GetBytes(payload);
@@ -71,20 +65,18 @@ namespace XCT.BaseLib.API.CoinOne
         /// <param name="endpoint"></param>
         /// <param name="args"></param>
         /// <returns></returns>
-        public new async Task<T> CallApiPostAsync<T>(string endpoint, Dictionary<string, object> args = null) where T : new()
-        {
+        public new async Task<T> CallApiPostAsync<T>(string endpoint, Dictionary<string, object> args = null) where T : new() {
             var _request = CreateJsonRequest(endpoint, Method.POST);
             {
                 var _params = new Dictionary<string, object>();
                 {
-                    if (args != null)
-                    {
+                    if (args != null) {
                         foreach (var a in args)
                             _params.Add(a.Key, a.Value);
                     }
 
                     _params.Add("access_token", __connect_key);
-                    _params.Add("nonce", CUnixTime.Now);
+                    _params.Add("nonce", convert_to_unix_time_seconds(DateTime.Now) * 1000); //CUnixTime.Now);
                 }
 
                 var _payload = Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_params)));
@@ -97,14 +89,21 @@ namespace XCT.BaseLib.API.CoinOne
             var _client = CreateJsonClient(__api_url);
             {
                 var _tcs = new TaskCompletionSource<IRestResponse>();
-                var _handle = _client.ExecuteAsync(_request, response =>
-                {
+                var _handle = _client.ExecuteAsync(_request, response => {
                     _tcs.SetResult(response);
                 });
 
                 var _response = await _tcs.Task;
                 return JsonConvert.DeserializeObject<T>(_response.Content);
             }
+        }
+
+
+
+        private long convert_to_unix_time_seconds(DateTime date) {
+            DateTime origin = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            TimeSpan diff = date - origin;
+            return (long)Math.Floor(diff.TotalSeconds);
         }
     }
 }
